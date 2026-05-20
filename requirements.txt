@@ -1,9 +1,5 @@
 customtkinter
 pystray
 Pillow
-sounddevice
-scipy
-keyboard
-faster-whisper
-pyperclip
 pywin32
+watchdog

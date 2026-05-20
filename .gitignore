@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# KeyWhisper custom folders
+backup_v1/
+Output/
+

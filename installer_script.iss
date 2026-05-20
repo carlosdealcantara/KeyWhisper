@@ -1,17 +1,18 @@
 [Setup]
 AppName=KeyWhisper
-AppVersion=1.0.0
+AppVersion=2.0.0
 AppPublisher=Carlos de Alcantara
 DefaultDirName={autopf}\KeyWhisper
 DefaultGroupName=KeyWhisper
-OutputBaseFilename=KeyWhisper_Setup
+OutputBaseFilename=KeyWhisper_Installer
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+AppMutex=Global\KeyWhisper_SingleInstance_Mutex
+SetupIconFile=C:\Users\sorla\Projetos\KeyWhisper\icon.ico
 
 [Files]
-; Pegando todos os arquivos da pasta do Disco D que sabemos que funciona!
-Source: "D:\KeyWhisper_dist\KeyWhisper\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "C:\Users\sorla\Projetos\KeyWhisper\dist\KeyWhisper.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\KeyWhisper"; Filename: "{app}\KeyWhisper.exe"
