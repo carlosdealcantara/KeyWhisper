@@ -46,7 +46,7 @@ class FileUpdateHandler(FileSystemEventHandler):
                 log_debug(f"[WhisperBridge] Tamanho aumentou de {self.last_position} para {current_size} bytes. Lendo novos dados...")
                 with open(self.file_path, "r", encoding="utf-8", errors="ignore") as f:
                     f.seek(self.last_position)
-                    new_text = f.read()
+                    new_text = f.read().replace('\ufeff', '')
                     self.last_position = f.tell()
                     
                     # Limpa espaços em branco vazios

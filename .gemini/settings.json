@@ -1,0 +1,21 @@
+{
+  "ignored_patterns": [
+    "env/",
+    "build/",
+    "dist/",
+    "Output/",
+    "backup_v1/",
+    "__pycache__/",
+    ".git/",
+    "*.zip",
+    "*.exe",
+    "*.ico",
+    "*.pkg",
+    "*.pyz",
+    "*.spec",
+    "*.log",
+    "*_log.txt",
+    "*.toc",
+    "*.html"
+  ]
+}

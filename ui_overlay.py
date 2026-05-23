@@ -154,12 +154,14 @@ class ToastNotification:
             self.root = None
 
 class ListeningPopup:
-    def __init__(self, parent_root, on_close_callback, on_settings_callback):
+    def __init__(self, parent_root, on_close_callback, on_settings_callback, on_toggle_pause_callback=None):
         self.parent_root = parent_root
         self.on_close_callback = on_close_callback
         self.on_settings_callback = on_settings_callback
+        self.on_toggle_pause_callback = on_toggle_pause_callback
         self.root = None
         self.drag_data = {"x": 0, "y": 0}
+        self.is_paused = False
 
     def show(self):
         if self.root:
@@ -274,7 +276,7 @@ class ListeningPopup:
             )
             self.settings_btn.pack(side="left", padx=4)
 
-            # Botão Central de Microfone - círculo azul
+            # Botão Central de Microfone - círculo azul (com função de pause)
             self.mic_btn = ctk.CTkButton(
                 btn_frame,
                 text="",
@@ -284,7 +286,7 @@ class ListeningPopup:
                 corner_radius=25,
                 fg_color="#2563eb",
                 hover_color="#3b82f6",
-                command=self.on_close_callback
+                command=self.on_toggle_pause_callback if self.on_toggle_pause_callback else lambda: None
             )
             self.mic_btn.pack(side="left", padx=8)
 
@@ -371,35 +373,43 @@ class ListeningPopup:
         )
         ok_btn.pack(pady=(4, 8))
 
+    def set_paused(self, paused: bool):
+        """Atualiza a UI para refletir o estado pausado/ouvindo."""
+        self.is_paused = paused
+        if not self.root:
+            return
+            
+        if self.is_paused:
+            self.mic_btn.configure(fg_color="#4b5563", hover_color="#6b7280")
+            self.status_label.configure(text="Pausado", text_color="#9ca3af")
+        else:
+            self.mic_btn.configure(fg_color="#2563eb", hover_color="#3b82f6")
+            self.status_label.configure(text="Ouvindo", text_color="#10b981")
+
     def _animate_pulse(self):
         """Loop de animação que pulsa a cor do botão e move as reticências do status."""
         if not self.root:
             return
+            
+        if not hasattr(self, 'pulse_step'):
+            self.pulse_step = 0
+            
+        if not self.is_paused:
+            # Animação de cor do microfone
+            colors = ["#2563eb", "#2969f2", "#2d6ff9", "#3275ff", "#2d6ff9", "#2969f2"]
+            try:
+                self.mic_btn.configure(fg_color=colors[self.pulse_step % len(colors)])
+            except Exception:
+                pass
+            
+            # Removed dot animation for static 'Ouvindo' label
+            # Previously: dots = "." * ((self.pulse_step // 2) % 4)
+            # self.status_label.configure(text=f"Ouvindo{dots}")
+            # Now we keep label unchanged
 
-        # Cores para a pulsação suave da borda e fundo do botão central
-        colors = ["#2563eb", "#3b82f6", "#60a5fa", "#3b82f6"]
-        border_colors = ["#1e40af", "#2563eb", "#3b82f6", "#2563eb"]
-
-        self.pulse_step = getattr(self, "pulse_step", 0)
-        self.pulse_step = (self.pulse_step + 1) % len(colors)
-
-        try:
-            self.mic_btn.configure(
-                fg_color=colors[self.pulse_step],
-                border_color=border_colors[self.pulse_step],
-                border_width=2
-            )
-        except Exception:
-            pass
-
-        # Animação suave de reticências
-        dots = ["Ouvindo.  ", "Ouvindo.. ", "Ouvindo...", "Ouvindo   "]
-        try:
-            self.status_label.configure(text=dots[self.pulse_step])
-        except Exception:
-            pass
-
-        self.root.after(300, self._animate_pulse)
+        
+        self.pulse_step += 1
+        self.root.after(150, self._animate_pulse)
 
 
 class WelcomeWindow:
@@ -416,6 +426,7 @@ class WelcomeWindow:
     def show(self):
         """Desenha e exibe a tela de boas-vindas do KeyWhisper."""
         if self.window and self.window.winfo_exists():
+            self.window.lift()
             self.window.focus()
             return
 
@@ -423,19 +434,36 @@ class WelcomeWindow:
 
         self.window = ctk.CTkToplevel(self.parent_root)
         self.window.title("Bem-vindo ao KeyWhisper")
-        self.window.geometry("585x420")
+        self.window.geometry("585x280")
         self.window.resizable(False, False)
 
         # Centraliza na tela
         self.window.update_idletasks()
         width = 585
-        height = 420
+        height = 280
         x = (self.window.winfo_screenwidth() // 2) - (width // 2)
         y = (self.window.winfo_screenheight() // 2) - (height // 2)
         self.window.geometry(f"{width}x{height}+{x}+{y}")
 
         self.window.configure(fg_color="#18181b")
+        # Garante que a janela fique no topo e ganhe foco real para não ser jogada pra trás
+        # pelo roubo de foco do motor WhisperDesktop. Força o topo por 5 segundos.
         self.window.attributes("-topmost", True)
+        self.window.lift()
+        self.window.focus_force()
+
+        def enforce_focus(count):
+            if not self.window or not self.window.winfo_exists():
+                return
+            if count > 0:
+                self.window.lift()
+                self.window.focus_force()
+                self.window.after(500, lambda: enforce_focus(count - 1))
+            else:
+                self.window.attributes("-topmost", False)
+
+        # Roda o reforço de foco 10 vezes (a cada 500ms) = 5 segundos de dominância
+        self.window.after(500, lambda: enforce_focus(10))
 
         # Título principal
         title_label = ctk.CTkLabel(
@@ -444,13 +472,14 @@ class WelcomeWindow:
             font=ctk.CTkFont(family="Inter", size=24, weight="bold"),
             text_color="#3b82f6"
         )
-        title_label.pack(pady=(40, 20))
+        title_label.pack(pady=(25, 10))
 
         # Texto explicativo informativo
         message_text = (
-            "O KeyWhisper já está rodando em segundo plano e ativado na sua bandeja do sistema (perto do relógio).\n\n"
-            "• Pressione F9 para iniciar/pausar a digitação por voz a qualquer momento.\n"
-            "• Pressione Ctrl + Shift + F9 para abrir a tela de configurações."
+            "O KeyWhisper está ativo! Ao reiniciar, ele será ativado em modo oculto.\n\n"
+            "• Pressione F9 para exibir ou esconder este pop-up de escuta.\n"
+            "• Pressione Ctrl + Shift + F9 para abrir a tela de configurações.\n\n"
+            "Selecione um campo de texto, comece a falar e a transcrição aparecerá!"
         )
         msg_label = ctk.CTkLabel(
             self.window,
@@ -460,33 +489,18 @@ class WelcomeWindow:
             wraplength=500,
             justify="left"
         )
-        msg_label.pack(padx=40, pady=(10, 15))
+        msg_label.pack(padx=40, pady=(5, 20))
 
-        # Configurações do Checkbox "Mostrar esta mensagem ao iniciar"
+        # A tela só deve aparecer na primeira vez ou quando acionada manualmente.
         self.config = settings.load_config()
-        self.show_again_var = tk.BooleanVar(value=self.config.get("show_welcome_on_startup", True))
-
-        def on_checkbox_changed():
-            self.config["show_welcome_on_startup"] = self.show_again_var.get()
+        if self.config.get("show_welcome_on_startup", True):
+            self.config["show_welcome_on_startup"] = False
             settings.save_config(self.config)
 
-        chk = ctk.CTkCheckBox(
-            self.window,
-            text="Mostrar esta mensagem ao iniciar",
-            variable=self.show_again_var,
-            onvalue=True,
-            offvalue=False,
-            command=on_checkbox_changed,
-            font=ctk.CTkFont(family="Inter", size=13),
-            text_color="#a1a1aa",
-            fg_color="#3b82f6"
-        )
-        chk.pack(pady=(55, 20))
-
-        # Botão Começar
+        # Botão Entendi
         start_btn = ctk.CTkButton(
             self.window,
-            text="Começar",
+            text="Entendi",
             width=140,
             height=40,
             corner_radius=8,
@@ -495,4 +509,4 @@ class WelcomeWindow:
             font=ctk.CTkFont(family="Inter", size=15, weight="bold"),
             command=self._close
         )
-        start_btn.pack(pady=(15, 45))
+        start_btn.pack(pady=(10, 35))

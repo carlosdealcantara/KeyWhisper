@@ -179,28 +179,28 @@ def inject_text(text, target_hwnd=None):
         SendInput.argtypes = (wintypes.UINT, ctypes.POINTER(INPUT), ctypes.c_int)
         SendInput.restype = wintypes.UINT
 
-        # Garante que termine com um espaço simples para separar falas consecutivas
-        if not text.endswith(' '):
-            text += ' '
+        # Normaliza múltiplos espaços dentro do texto para evitar os "espaços gigantes",
+        # mas garante que termine com um espaço simples para separar falas consecutivas
+        text = " ".join(text.split()) + " "
 
-        total_events = 2 * len(text)
-        inputs = (INPUT * total_events)()
-        
-        for idx, char in enumerate(text):
+        inputs = (INPUT * 2)()
+
+        for char in text:
             char_code = ord(char)
             # Evento Key Down
-            inputs[2 * idx].type = INPUT_KEYBOARD
-            inputs[2 * idx].union.ki = KEYBDINPUT(0, char_code, KEYEVENTF_UNICODE, 0, None)
+            inputs[0].type = INPUT_KEYBOARD
+            inputs[0].union.ki = KEYBDINPUT(0, char_code, KEYEVENTF_UNICODE, 0, None)
             # Evento Key Up
-            inputs[2 * idx + 1].type = INPUT_KEYBOARD
-            inputs[2 * idx + 1].union.ki = KEYBDINPUT(0, char_code, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, None)
+            inputs[1].type = INPUT_KEYBOARD
+            inputs[1].union.ki = KEYBDINPUT(0, char_code, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, None)
             
-        res = SendInput(total_events, inputs, ctypes.sizeof(INPUT))
+            SendInput(2, inputs, ctypes.sizeof(INPUT))
+            
+            # Pausa cirúrgica de 1 milissegundo para dar tempo a motores síncronos (como o Bloco de Notas)
+            # digerirem a tecla e evitarem o descarte de letras pelo spellcheck.
+            time.sleep(0.001)
         
-        if res == total_events:
-            log_debug(f"[Injector] Digitação nativa via SendInput em lote concluída com sucesso ({len(text)} caracteres).")
-        else:
-            log_debug(f"[Injector] AVISO: SendInput enviou apenas {res}/{total_events} eventos. A janela ativa pode estar bloqueando a injeção.")
+        log_debug(f"[Injector] Digitação nativa fluida concluída com sucesso ({len(text)} caracteres).")
     except Exception as e:
         log_msg = f"[Injector] Erro ao injetar via SendInput nativo corrigido: {e}"
         print(log_msg)

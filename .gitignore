@@ -221,3 +221,17 @@ __marimo__/
 backup_v1/
 Output/
 
+# KeyWhisper - Arquivos de teste e temporários do engine
+engine_test*.zip
+
+# KeyWhisper - Logs de compilação (regenerados pelo build)
+build_log.txt
+iscc_log.txt
+*.log
+
+# KeyWhisper - Binários e ícones compilados (não rastrear no Git)
+*.ico
+
+# Gemini/Antigravity config (pode rastrear para versionamento)
+# .gemini/
+
