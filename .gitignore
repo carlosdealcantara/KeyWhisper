@@ -233,5 +233,4 @@ iscc_log.txt
 *.ico
 
 # Gemini/Antigravity config (pode rastrear para versionamento)
-# .gemini/
-
+.gemini/
